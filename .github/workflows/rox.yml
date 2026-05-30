@@ -60,10 +60,10 @@ jobs:
           # Cất tạm file M3U ra thư mục an toàn của hệ thống
           mv Roxiestreams.m3u /tmp/Roxiestreams.m3u
 
-          # Tạo (hoặc chuyển sang) một nhánh mồ côi không có lịch sử
+          # BƯỚC QUAN TRỌNG 1: Tạo nhánh tên là m3u
           git checkout --orphan m3u
 
-          # Xóa sạch toàn bộ file code (rox.py, engine) khỏi nhánh này
+          # Xóa sạch toàn bộ file code khỏi nhánh này
           git rm -rf .
 
           # Lấy file M3U từ thư mục tạm bỏ lại vào nhánh
@@ -73,5 +73,5 @@ jobs:
           git add Roxiestreams.m3u
           git commit -m "📺 Updated RoxieStreams: $(date -u +'%Y-%m-%d %H:%M UTC')"
 
-          # Ép đẩy (Force Push) ghi đè lên nhánh m3u-list trên GitHub
-          git push -f origin m3u-list
+          # BƯỚC QUAN TRỌNG 2: Đẩy đúng nhánh m3u lên GitHub
+          git push -f origin m3u
