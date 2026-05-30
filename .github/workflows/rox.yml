@@ -1,0 +1,77 @@
+name: ▶️ Update RoxieStreams
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # ⏰ Chạy mỗi 30 phút
+  workflow_dispatch:        # Bấm chạy thủ công
+
+permissions:
+  contents: write           # Cấp quyền để GitHub Actions có thể Push code
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Tải không gian làm việc của Repo Public (get-sports)
+      - name: 📥 Checkout public repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Dùng Token tải Repo Private (engine) chứa file code Python
+      - name: 🔐 Checkout private engine repository
+        uses: actions/checkout@v4
+        with:
+          repository: huuvinhtv/engine
+          token: ${{ secrets.ENGINE_TOKEN }}
+          path: engine
+
+      # 3. Cài đặt môi trường Python
+      - name: 🐍 Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 4. Cài đặt các thư viện cần thiết
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
+
+      # 5. Chạy file cào dữ liệu (file này nằm trong thư mục engine)
+      - name: 🎯 Run RoxieStreams scraper
+        run: python engine/rox.py
+
+      # 6. Đẩy file M3U lên nhánh ảo (Orphan Branch) để tránh rác lịch sử
+      - name: 💾 Force Push M3U to Virtual Branch (1 Commit)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Kiểm tra xem file M3U có được tạo thành công không
+          if [ ! -f "Roxiestreams.m3u" ]; then
+            echo "❌ Error: Roxiestreams.m3u not found! Scraper might have failed."
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Cất tạm file M3U ra thư mục an toàn của hệ thống
+          mv Roxiestreams.m3u /tmp/Roxiestreams.m3u
+
+          # Tạo (hoặc chuyển sang) một nhánh mồ côi không có lịch sử
+          git checkout --orphan m3u
+
+          # Xóa sạch toàn bộ file code (rox.py, engine) khỏi nhánh này
+          git rm -rf .
+
+          # Lấy file M3U từ thư mục tạm bỏ lại vào nhánh
+          mv /tmp/Roxiestreams.m3u .
+
+          # Thêm file và tạo 1 Commit duy nhất
+          git add Roxiestreams.m3u
+          git commit -m "📺 Updated RoxieStreams: $(date -u +'%Y-%m-%d %H:%M UTC')"
+
+          # Ép đẩy (Force Push) ghi đè lên nhánh m3u-list trên GitHub
+          git push -f origin m3u-list
